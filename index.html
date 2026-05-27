@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#fdf6f0">
+<title>Monico & Magiú ✿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root {
+    --bg: #fdf6f0; --bg-card: #ffffff; --bg-soft: #fbeee4;
+    --primary: #e07a8b; --primary-dark: #c25e72;
+    --secondary: #8db596; --secondary-dark: #6a9a76;
+    --accent: #f4b860;
+    --text: #3d2e2a; --text-soft: #7d6660; --text-mute: #a8938d;
+    --border: #f0dccb; --border-strong: #e0c4ad;
+    --shadow: 0 2px 12px rgba(180, 130, 100, 0.08);
+    --shadow-lg: 0 8px 32px rgba(180, 130, 100, 0.15);
+    --radius: 16px; --radius-sm: 10px;
+    --note-s: #d4a017; --note-a: #7ab87a; --note-b: #f4b860; --note-c: #e07a8b; --note-d: #b39ddb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Quicksand', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 80px; line-height: 1.5; }
+  .header { background: linear-gradient(135deg, #fbeee4 0%, #f9e3d3 100%); padding: 20px 20px 16px; text-align: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; backdrop-filter: blur(8px); }
+  .title { font-family: 'Caveat', cursive; font-size: 34px; color: var(--primary-dark); font-weight: 700; line-height: 1; margin-bottom: 2px; }
+  .subtitle { font-size: 12px; color: var(--text-soft); font-style: italic; }
+  .stats { display: flex; justify-content: center; gap: 20px; margin-top: 8px; font-size: 12px; color: var(--text-soft); }
+  .stat strong { color: var(--primary-dark); font-weight: 600; }
+  .sync-indicator { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-mute); margin-left: 6px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; }
+  .sync-dot.online { background: var(--secondary); animation: pulse 2s infinite; }
+  .sync-dot.offline { background: #d97757; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .container { max-width: 880px; margin: 0 auto; padding: 16px; }
+  .tabs { display: flex; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; margin-bottom: 16px; box-shadow: var(--shadow); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 1; padding: 10px 8px; text-align: center; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-soft); transition: all 0.2s; white-space: nowrap; min-width: 70px; }
+  .tab.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(224, 122, 139, 0.3); }
+  .filters { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .filter-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .filter-row + .filter-row { margin-top: 10px; }
+  .filter-label { font-size: 11px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 56px; }
+  .chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: white; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-soft); transition: all 0.15s; font-family: inherit; }
+  .chip:hover { border-color: var(--primary); }
+  .chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .chip.note-S.active { background: var(--note-s); border-color: var(--note-s); }
+  .chip.note-A.active { background: var(--note-a); border-color: var(--note-a); }
+  .chip.note-B.active { background: var(--note-b); border-color: var(--note-b); }
+  .chip.note-C.active { background: var(--note-c); border-color: var(--note-c); }
+  .chip.note-D.active { background: var(--note-d); border-color: var(--note-d); }
+  .search { flex: 1; min-width: 140px; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; background: white; color: var(--text); }
+  .search:focus { outline: none; border-color: var(--primary); }
+  .sort-select { padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 13px; background: white; color: var(--text); cursor: pointer; }
+  .activities-list { display: flex; flex-direction: column; gap: 12px; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-mute); font-style: italic; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); transition: all 0.2s; position: relative; overflow: hidden; }
+  .card.done { background: linear-gradient(135deg, #f0f5e8 0%, #e8f0dc 100%); border-color: #c5d9a8; }
+  .card.done .card-title { text-decoration: line-through; color: var(--text-soft); }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .card-title { font-size: 17px; font-weight: 700; color: var(--text); flex: 1; }
+  .card-price { font-size: 13px; font-weight: 600; color: var(--accent); background: #fef4e2; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .card-price.free { color: var(--secondary-dark); background: #e7f1e8; }
+  .notes { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .note-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 4px 10px; border-radius: 999px; font-weight: 600; color: white; }
+  .note-badge.empty { background: #f0e6dc; color: var(--text-mute); }
+  .note-badge .who { opacity: 0.85; font-weight: 500; }
+  .note-S { background: var(--note-s); }
+  .note-A { background: var(--note-a); }
+  .note-B { background: var(--note-b); }
+  .note-C { background: var(--note-c); }
+  .note-D { background: var(--note-d); }
+  .card-desc { font-size: 13px; color: var(--text-soft); margin-bottom: 10px; line-height: 1.5; }
+  .card-desc.collapsed { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .read-more { background: none; border: none; color: var(--primary-dark); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; font-family: inherit; margin-bottom: 8px; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-soft); margin-bottom: 12px; }
+  .card-meta-item { display: flex; align-items: center; gap: 4px; }
+  .card-meta a { color: var(--primary-dark); text-decoration: none; word-break: break-all; }
+  .card-meta a:hover { text-decoration: underline; }
+  .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 10px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--text); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--primary); background: #fef9f5; }
+  .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+  .btn-success { background: var(--secondary); color: white; border-color: var(--secondary); }
+  .btn-success:hover { background: var(--secondary-dark); border-color: var(--secondary-dark); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text-soft); padding: 8px 10px; }
+  .btn-ghost:hover { background: var(--bg-soft); color: var(--text); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+  .btn-full { width: 100%; justify-content: center; }
+  .done-banner { background: rgba(122, 184, 122, 0.15); border: 1px dashed #7ab87a; border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 10px; font-size: 13px; color: #4d7a4d; }
+  .done-banner strong { color: #3d6a3d; }
+  .done-banner .done-comment { margin-top: 4px; font-style: italic; font-size: 12px; }
+  .form-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .form-section h2 { font-family: 'Caveat', cursive; font-size: 28px; color: var(--primary-dark); margin-bottom: 4px; font-weight: 700; }
+  .form-section p.hint { font-size: 13px; color: var(--text-soft); margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; }
+  .field label .required { color: var(--primary); }
+  .field input, .field textarea, .field select { width: 100%; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-family: inherit; font-size: 14px; background: white; color: var(--text); transition: border-color 0.15s; }
+  .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: var(--primary); }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+  .note-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .note-option { padding: 8px 14px; border: 1.5px solid var(--border-strong); border-radius: 999px; background: white; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-soft); transition: all 0.15s; }
+  .note-option:hover { border-color: var(--primary); }
+  .note-option.selected.note-S { background: var(--note-s); border-color: var(--note-s); color: white; }
+  .note-option.selected.note-A { background: var(--note-a); border-color: var(--note-a); color: white; }
+  .note-option.selected.note-B { background: var(--note-b); border-color: var(--note-b); color: white; }
+  .note-option.selected.note-C { background: var(--note-c); border-color: var(--note-c); color: white; }
+  .note-option.selected.note-D { background: var(--note-d); border-color: var(--note-d); color: white; }
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(61, 46, 42, 0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius); padding: 24px; max-width: 420px; width: 100%; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-family: 'Caveat', cursive; font-size: 28px; color: var(--primary-dark); margin-bottom: 12px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120%); background: var(--text); color: white; padding: 12px 20px; border-radius: 999px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-lg); z-index: 200; transition: transform 0.3s ease; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--secondary-dark); }
+  .toast.error { background: #c25e72; }
+  .loading { text-align: center; padding: 40px; color: var(--text-mute); }
+  .heart-deco { display: inline-block; color: var(--primary); font-size: 14px; }
+  .who-am-i { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; font-size: 11px; flex-wrap: wrap; }
+  .who-pill { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: white; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-soft); font-family: inherit; }
+  .who-pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+  #map { height: 60vh; min-height: 400px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); z-index: 1; }
+  .map-popup { font-family: 'Quicksand', sans-serif; }
+  .map-popup h4 { font-size: 14px; margin-bottom: 4px; color: var(--text); }
+  .map-popup .pop-notes { display: flex; gap: 4px; margin: 4px 0; flex-wrap: wrap; }
+  .map-popup .pop-meta { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+  .tier-controls { display: flex; gap: 6px; margin-bottom: 16px; background: var(--bg-card); padding: 6px; border-radius: var(--radius); border: 1px solid var(--border); }
+  .tier-toggle { flex: 1; padding: 8px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-soft); cursor: pointer; }
+  .tier-toggle.active { background: var(--primary); color: white; }
+  .tier { display: flex; gap: 0; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 10px; min-height: 80px; box-shadow: var(--shadow); }
+  .tier-label { width: 60px; display: flex; align-items: center; justify-content: center; font-family: 'Caveat', cursive; font-size: 36px; font-weight: 700; color: white; flex-shrink: 0; }
+  .tier-label.tier-S { background: var(--note-s); }
+  .tier-label.tier-A { background: var(--note-a); }
+  .tier-label.tier-B { background: var(--note-b); }
+  .tier-label.tier-C { background: var(--note-c); }
+  .tier-label.tier-D { background: var(--note-d); }
+  .tier-label.tier-X { background: #b8a89e; }
+  .tier-items { flex: 1; padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; background: white; }
+  .tier-item { background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .tier-item:hover { background: var(--primary); color: white; border-color: var(--primary); }
+  .tier-item.done { opacity: 0.5; text-decoration: line-through; }
+  .tier-empty { color: var(--text-mute); font-size: 11px; font-style: italic; padding: 4px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="title">Monico <span class="heart-deco">♡</span> Magiú</div>
+  <div class="subtitle">notre carnet d'aventures à deux
+    <span class="sync-indicator"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">connexion...</span></span>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="who-am-i">
+    <span style="color: var(--text-mute);">Je suis :</span>
+    <button class="who-pill" data-who="monico">Monico</button>
+    <button class="who-pill" data-who="magiu">Magiú</button>
+  </div>
+</header>
+
+<main class="container">
+  <nav class="tabs">
+    <button class="tab active" data-tab="list">📋 Liste</button>
+    <button class="tab" data-tab="map">🗺️ Carte</button>
+    <button class="tab" data-tab="tier">🏆 Tier</button>
+    <button class="tab" data-tab="add">✨ Ajouter</button>
+  </nav>
+
+  <section id="tab-list">
+    <div class="filters">
+      <div class="filter-row">
+        <input type="text" class="search" id="search" placeholder="🔍 Rechercher..." />
+        <select class="sort-select" id="sort">
+          <option value="best">⭐ Meilleures notes</option>
+          <option value="price-asc">💰 Prix croissant</option>
+          <option value="price-desc">💰 Prix décroissant</option>
+          <option value="location">📍 Par localisation</option>
+          <option value="recent">🕐 Récemment ajoutées</option>
+          <option value="alpha">🔤 A-Z</option>
+        </select>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Statut</span>
+        <button class="chip active" data-filter="status" data-value="all">Toutes</button>
+        <button class="chip" data-filter="status" data-value="todo">À faire</button>
+        <button class="chip" data-filter="status" data-value="done">✓ Faites</button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Monico</span>
+        <button class="chip active" data-filter="monico" data-value="all">Tous</button>
+        <button class="chip note-S" data-filter="monico" data-value="S">S</button>
+        <button class="chip note-A" data-filter="monico" data-value="A">A</button>
+        <button class="chip note-B" data-filter="monico" data-value="B">B</button>
+        <button class="chip note-C" data-filter="monico" data-value="C">C</button>
+        <button class="chip note-D" data-filter="monico" data-value="D">D</button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Magiú</span>
+        <button class="chip active" data-filter="magiu" data-value="all">Tous</button>
+        <button class="chip note-S" data-filter="magiu" data-value="S">S</button>
+        <button class="chip note-A" data-filter="magiu" data-value="A">A</button>
+        <button class="chip note-B" data-filter="magiu" data-value="B">B</button>
+        <button class="chip note-C" data-filter="magiu" data-value="C">C</button>
+        <button class="chip note-D" data-filter="magiu" data-value="D">D</button>
+      </div>
+    </div>
+    <div class="activities-list" id="list"><div class="loading">chargement...</div></div>
+  </section>
+
+  <section id="tab-map" style="display:none;">
+    <div class="filters" style="margin-bottom: 12px;">
+      <div class="filter-row">
+        <span class="filter-label">Afficher</span>
+        <button class="chip active" data-mapfilter="all">Toutes</button>
+        <button class="chip" data-mapfilter="todo">À faire</button>
+        <button class="chip" data-mapfilter="done">✓ Faites</button>
+      </div>
+    </div>
+    <div id="map"></div>
+    <p style="font-size: 12px; color: var(--text-soft); margin-top: 10px; text-align: center;">
+      Seules les activités avec adresse géolocalisée apparaissent. Couleurs : 💛 coup de cœur, 💚 à faire, 💗 lambda, ✓ vert clair = fait.
+    </p>
+  </section>
+
+  <section id="tab-tier" style="display:none;">
+    <div class="tier-controls">
+      <button class="tier-toggle active" data-tier-view="combined">⭐ Combinée</button>
+      <button class="tier-toggle" data-tier-view="monico">Monico</button>
+      <button class="tier-toggle" data-tier-view="magiu">Magiú</button>
+    </div>
+    <div id="tierlist"></div>
+    <p style="font-size: 11px; color: var(--text-mute); margin-top: 12px; text-align: center;">
+      Clique sur une activité pour la modifier. La vue combinée somme les notes des deux.
+    </p>
+  </section>
+
+  <section id="tab-add" style="display:none;">
+    <div class="form-section">
+      <h2>Une nouvelle idée ?</h2>
+      <p class="hint">Ajoute une activité à explorer ensemble</p>
+      <div class="field">
+        <label>Nom de l'activité <span class="required">*</span></label>
+        <input type="text" id="f-name" placeholder="Ex: Pique-nique au parc Monceau" maxlength="80" />
+      </div>
+      <div class="field">
+        <label>Note Monico</label>
+        <div class="note-picker" data-target="f-monico">
+          <button type="button" class="note-option note-S" data-v="S">S 💛</button>
+          <button type="button" class="note-option note-A" data-v="A">A</button>
+          <button type="button" class="note-option note-B" data-v="B">B</button>
+          <button type="button" class="note-option note-C" data-v="C">C</button>
+          <button type="button" class="note-option note-D" data-v="D">D</button>
+          <button type="button" class="note-option" data-v="">—</button>
+        </div>
+        <input type="hidden" id="f-monico" value="" />
+      </div>
+      <div class="field">
+        <label>Note Magiú</label>
+        <div class="note-picker" data-target="f-magiu">
+          <button type="button" class="note-option note-S" data-v="S">S 💛</button>
+          <button type="button" class="note-option note-A" data-v="A">A</button>
+          <button type="button" class="note-option note-B" data-v="B">B</button>
+          <button type="button" class="note-option note-C" data-v="C">C</button>
+          <button type="button" class="note-option note-D" data-v="D">D</button>
+          <button type="button" class="note-option" data-v="">—</button>
+        </div>
+        <input type="hidden" id="f-magiu" value="" />
+      </div>
+      <p style="font-size: 11px; color: var(--text-mute); margin: -10px 0 16px;">
+        💛 S = coup de cœur pour plus tard (voyage, occasion spéciale...)
+      </p>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="f-desc" placeholder="C'est quoi ? Pourquoi c'est cool ?"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Prix / personne</label>
+          <input type="text" id="f-price" placeholder="Ex: 25-40€ ou Gratuit" />
+        </div>
+        <div class="field">
+          <label>Adresse</label>
+          <input type="text" id="f-address" placeholder="Ex: 12 rue de Rivoli, Paris" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Lien</label>
+        <input type="url" id="f-link" placeholder="https://..." />
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary btn-full" id="btn-submit">✨ Ajouter</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-overlay" id="modal-done">
+  <div class="modal">
+    <h3 id="modal-title">Activité faite ! 🎉</h3>
+    <div class="field"><label>Quand ?</label><input type="date" id="done-date" /></div>
+    <div class="field"><label>Un petit commentaire ?</label><textarea id="done-comment" placeholder="C'était... 💭"></textarea></div>
+    <div class="form-actions">
+      <button class="btn" id="cancel-done">Annuler</button>
+      <button class="btn btn-success" id="confirm-done">✓ Valider</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <h3>Modifier l'activité</h3>
+    <div class="field"><label>Nom</label><input type="text" id="e-name" /></div>
+    <div class="field">
+      <label>Note Monico</label>
+      <div class="note-picker" data-target="e-monico">
+        <button type="button" class="note-option note-S" data-v="S">S 💛</button>
+        <button type="button" class="note-option note-A" data-v="A">A</button>
+        <button type="button" class="note-option note-B" data-v="B">B</button>
+        <button type="button" class="note-option note-C" data-v="C">C</button>
+        <button type="button" class="note-option note-D" data-v="D">D</button>
+        <button type="button" class="note-option" data-v="">—</button>
+      </div>
+      <input type="hidden" id="e-monico" />
+    </div>
+    <div class="field">
+      <label>Note Magiú</label>
+      <div class="note-picker" data-target="e-magiu">
+        <button type="button" class="note-option note-S" data-v="S">S 💛</button>
+        <button type="button" class="note-option note-A" data-v="A">A</button>
+        <button type="button" class="note-option note-B" data-v="B">B</button>
+        <button type="button" class="note-option note-C" data-v="C">C</button>
+        <button type="button" class="note-option note-D" data-v="D">D</button>
+        <button type="button" class="note-option" data-v="">—</button>
+      </div>
+      <input type="hidden" id="e-magiu" />
+    </div>
+    <div class="field"><label>Description</label><textarea id="e-desc"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Prix</label><input type="text" id="e-price" /></div>
+      <div class="field"><label>Adresse</label><input type="text" id="e-address" /></div>
+    </div>
+    <div class="field"><label>Lien</label><input type="url" id="e-link" /></div>
+    <div class="form-actions">
+      <button class="btn" id="cancel-edit">Annuler</button>
+      <button class="btn btn-primary" id="confirm-edit">Enregistrer</button>
+    </div>
+    <div style="margin-top: 12px; text-align: center;">
+      <button class="btn btn-ghost btn-sm" id="delete-activity" style="color: #c25e72;">🗑 Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+// =================================================================
+// ⚙️  CONFIGURATION FIREBASE — REMPLACE LES VALEURS CI-DESSOUS
+//     Suis le guide pour récupérer ta config (firebaseConfig).
+// =================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAIGP65V_HN585nmN7toL-qjPuFW-Hp8uo",
+  authDomain: "monico-magiu-quests.firebaseapp.com",
+  projectId: "monico-magiu-quests",
+  storageBucket: "monico-magiu-quests.firebasestorage.app",
+  messagingSenderId: "120663018623",
+  appId: "1:120663018623:web:93cb654b1f069527fe034a",
+  measurementId: "G-HD23KV9ZNJ"
+};
+// =================================================================
+
+const USE_FIREBASE = firebaseConfig.apiKey !== "REMPLACE_MOI";
+
+if (USE_FIREBASE) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.__db = db;
+    window.__fb = { collection, doc, onSnapshot, setDoc, deleteDoc, writeBatch, getDocs };
+    window.__USE_FIREBASE = true;
+    document.getElementById('sync-dot').classList.add('online');
+    document.getElementById('sync-text').textContent = 'synchronisé ✿';
+  } catch (e) {
+    console.error('Firebase init failed:', e);
+    window.__USE_FIREBASE = false;
+    document.getElementById('sync-dot').classList.add('offline');
+    document.getElementById('sync-text').textContent = 'hors-ligne';
+  }
+} else {
+  window.__USE_FIREBASE = false;
+  document.getElementById('sync-dot').classList.add('offline');
+  document.getElementById('sync-text').textContent = 'mode local (config Firebase manquante)';
+}
+
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<script>
+const LOCAL_KEY = 'mm_activities_v2';
+const WHO_KEY = 'mm_who';
+let activities = [];
+let filters = { status: 'all', monico: 'all', magiu: 'all', search: '', sort: 'best', mapFilter: 'all', tierView: 'combined' };
+let currentDoneId = null;
+let currentEditId = null;
+let whoAmI = null;
+let mapInstance = null;
+let mapMarkers = [];
+let geocodeCache = {};
+
+const SEED = [
+  { name: "Cours de céramique", monico: "", magiu: "C", desc: "", price: "", address: "", link: "" },
+  { name: "Massages", monico: "", magiu: "A", desc: "Voir sur groupon en fonction des offres. Juste pas massage Thaï, c'est trop violent haha", price: "30-50 €", address: "Paris", link: "https://www.groupon.fr/bon-plan/massage", lat: 48.8566, lng: 2.3522 },
+  { name: "Linogravure", monico: "", magiu: "B", desc: "Découvrez l'art de la linogravure : gravure de votre motif avec une gouge. Une fois votre œuvre terminée, vous imprimerez vos créations en format A4.", price: "45-50 €", address: "Paris", link: "https://wecandoo.fr/atelier/paris-julie-linogravure-apero", lat: 48.8566, lng: 2.3522 },
+  { name: "Cinéma plein air", monico: "", magiu: "C", desc: "La Villette : 22 juillet au 16 août, thème L'appel de la forêt. Musée Jacques Chirac : 4 juillet au 30 août", price: "Gratuit", address: "Parc de la Villette, Paris", link: "", lat: 48.8938, lng: 2.3905 },
+  { name: "Atelier peinture", monico: "", magiu: "A", desc: "Paint me UP propose une autre façon de peindre, dans un lieu immersif où l'on vient se détendre et s'amuser. 2 heures avec un artiste présent à chaque étape.", price: "35-45€", address: "42 Rue Saint-Jacques, 75005 Paris", link: "https://paintme-up.com/?#ateliers", lat: 48.8493, lng: 2.3434 },
+  { name: "Escape game", monico: "D", magiu: "B", desc: "Avec Pablo et Hélène (pas EG d'horreur). Top 15 dans le lien", price: "30-45€", address: "Paris", link: "https://www.escapegame.fr/top/top-escape-game-paris/", lat: 48.8566, lng: 2.3522 },
+  { name: "Cabaret Moulin Rouge", monico: "B", magiu: "A", desc: "Spectacle 23h - À faire une fois dans sa vie mais très cher. Minimum 120€/personne", price: "120€ minimum", address: "82 Bd de Clichy, 75018 Paris", link: "https://reservations.moulinrouge.fr/", lat: 48.8841, lng: 2.3324 },
+  { name: "Cours de danse à deux", monico: "B", magiu: "C", desc: "", price: "", address: "", link: "" },
+  { name: "Dégustation chocolats", monico: "", magiu: "B", desc: "Funbooker propose une aventure gustative avec ses ateliers de chocologie et de dégustation de chocolat à Paris.", price: "30-50€", address: "Paris", link: "https://www.funbooker.com/fr/category/degustation-chocolat/paris", lat: 48.8566, lng: 2.3522 },
+  { name: "Cueillette de fleurs", monico: "", magiu: "B", desc: "", price: "", address: "", link: "" },
+  { name: "Comedy Club", monico: "A", magiu: "A", desc: "Plusieurs Comedy Club dans Paris. Prix abordables, possibilité de grignoter (à vérifier)", price: "8-25€", address: "Paris", link: "https://lecomedyclub.com/", lat: 48.8566, lng: 2.3522 },
+  { name: "Color Hunt photographie", monico: "", magiu: "A", desc: "Balade dans Paris", price: "Gratuit", address: "Paris", link: "", lat: 48.8566, lng: 2.3522 },
+  { name: "Atelier respiration à deux", monico: "", magiu: "D", desc: "Flemme non ? haha à tester pourquoi pas", price: "", address: "", link: "" },
+  { name: "Collages ensemble", monico: "", magiu: "B", desc: "Atelier détente", price: "Gratuit", address: "À la maison", link: "" },
+  { name: "Théâtre immersif", monico: "", magiu: "B", desc: "", price: "", address: "", link: "" },
+  { name: "Atelier composition florale", monico: "", magiu: "D", desc: "Trop cher et un peu boring non ?", price: "65€ minimum", address: "", link: "" },
+  { name: "Opéra Palais Garnier", monico: "", magiu: "A", desc: "Bien mettre le filtre Palais Garnier car bcp de spectacles sont à d'autres Opéra. Et aussi on peut le visiter", price: "30-160€", address: "Place de l'Opéra, 75009 Paris", link: "https://www.operadeparis.fr/billetterie/lieux-palais-garnier", lat: 48.8719, lng: 2.3316 },
+  { name: "Atelier création cocktail", monico: "", magiu: "B", desc: "Cours de mixologie : créer un cocktail ou mocktail", price: "55-75€", address: "Paris", link: "https://wecandoo.fr/ateliers/paris-mixologie", lat: 48.8566, lng: 2.3522 },
+  { name: "Enregistrer interview souvenir", monico: "", magiu: "A", desc: "Préparer 10 questions et interviewer l'autre lol", price: "Gratuit", address: "Chez Magiú ou chez Monico", link: "" },
+  { name: "Spa", monico: "", magiu: "B", desc: "Centre Aquatique Arsenal - Spa Arzana", price: "28-30€", address: "43 rue Voltaire, 92500 Rueil-Malmaison", link: "", lat: 48.8770, lng: 2.1809 },
+  { name: "Réflexologie plantaire", monico: "", magiu: "A", desc: "Massage des pieds + stimulation énergétique. Bien vérifier les notes avant de réserver", price: "25-50€", address: "Paris", link: "https://www.groupon.fr/bon-plan/reflexologie", lat: 48.8566, lng: 2.3522 },
+  { name: "Escape game à la maison", monico: "", magiu: "A", desc: "Jeu de société, demander à Hélène le lien et l'appli", price: "Gratuit", address: "Chez Magiú ou chez Monico", link: "" },
+  { name: "Jouer à Minecraft", monico: "C", magiu: "", desc: "Deux ordi nécessaires avec Minecraft dessus", price: "Gratuit", address: "Chez Magiú ou chez Monico", link: "" }
+];
+
+async function loadActivities() {
+  if (window.__USE_FIREBASE) {
+    const { collection, onSnapshot, getDocs, writeBatch, doc } = window.__fb;
+    const col = collection(window.__db, 'activities');
+    try {
+      const snap = await getDocs(col);
+      if (snap.empty) {
+        const batch = writeBatch(window.__db);
+        SEED.forEach((a, i) => {
+          const id = 'seed_' + i;
+          const data = { ...a, done: false, doneDate: null, doneComment: null, doneBy: null, created: Date.now() + i };
+          Object.keys(data).forEach(k => { if (data[k] === undefined) data[k] = null; });
+          batch.set(doc(col, id), data);
+        });
+        await batch.commit();
+      }
+    } catch (e) { console.error('Seed check failed:', e); }
+
+    onSnapshot(col, snap => {
+      activities = [];
+      snap.forEach(d => activities.push({ id: d.id, ...d.data() }));
+      renderAll();
+    }, err => {
+      console.error('Firestore listen error:', err);
+      toast('⚠ Erreur de sync : ' + err.message, 'error');
+    });
+  } else {
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY);
+      if (raw) {
+        activities = JSON.parse(raw);
+      } else {
+        activities = SEED.map((a, i) => ({
+          id: 'local_' + Date.now() + '_' + i,
+          ...a,
+          done: false, doneDate: null, doneComment: null, doneBy: null,
+          created: Date.now() + i
+        }));
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(activities));
+      }
+    } catch (e) { activities = []; }
+    renderAll();
+  }
+}
+
+async function saveActivity(a) {
+  if (window.__USE_FIREBASE) {
+    const { doc, setDoc } = window.__fb;
+    const data = { ...a };
+    delete data.id;
+    Object.keys(data).forEach(k => { if (data[k] === undefined) data[k] = null; });
+    await setDoc(doc(window.__db, 'activities', a.id), data);
+  } else {
+    const idx = activities.findIndex(x => x.id === a.id);
+    if (idx >= 0) activities[idx] = a;
+    else activities.unshift(a);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(activities));
+    renderAll();
+  }
+}
+
+async function removeActivity(id) {
+  if (window.__USE_FIREBASE) {
+    const { doc, deleteDoc } = window.__fb;
+    await deleteDoc(doc(window.__db, 'activities', id));
+  } else {
+    activities = activities.filter(a => a.id !== id);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(activities));
+    renderAll();
+  }
+}
+
+function loadWho() {
+  whoAmI = localStorage.getItem(WHO_KEY) || null;
+  renderWho();
+}
+function saveWho(w) {
+  whoAmI = w;
+  localStorage.setItem(WHO_KEY, w);
+  renderWho();
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function noteBadge(note, who) {
+  if (!note) return `<span class="note-badge empty">${who} —</span>`;
+  return `<span class="note-badge note-${note}"><span class="who">${who}</span> ${note}</span>`;
+}
+function priceClass(price) { return /gratuit/i.test(price || '') ? 'free' : ''; }
+function parsePrice(price) {
+  if (!price) return null;
+  if (/gratuit/i.test(price)) return 0;
+  const m = price.match(/\d+/);
+  return m ? parseInt(m[0]) : null;
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function isUrl(s) { return s && /^https?:\/\//i.test(s); }
+function noteValue(n) { return n === 'S' ? 5 : n === 'A' ? 4 : n === 'B' ? 3 : n === 'C' ? 2 : n === 'D' ? 1 : 0; }
+function combinedScore(a) { return noteValue(a.monico) + noteValue(a.magiu); }
+
+try {
+  const cached = localStorage.getItem('mm_geocode_cache');
+  if (cached) geocodeCache = JSON.parse(cached);
+} catch (e) {}
+
+async function geocode(address) {
+  if (!address) return null;
+  if (geocodeCache[address]) return geocodeCache[address];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const data = await r.json();
+    if (data && data[0]) {
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      geocodeCache[address] = coords;
+      try { localStorage.setItem('mm_geocode_cache', JSON.stringify(geocodeCache)); } catch (e) {}
+      return coords;
+    }
+  } catch (e) { console.error('Geocode failed:', e); }
+  return null;
+}
+
+function renderList() {
+  const list = document.getElementById('list');
+  if (!list) return;
+  let filtered = activities.filter(a => {
+    if (filters.status === 'todo' && a.done) return false;
+    if (filters.status === 'done' && !a.done) return false;
+    if (filters.monico !== 'all' && a.monico !== filters.monico) return false;
+    if (filters.magiu !== 'all' && a.magiu !== filters.magiu) return false;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const blob = (a.name + ' ' + (a.desc||'') + ' ' + (a.address||'')).toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    switch (filters.sort) {
+      case 'best': return combinedScore(b) - combinedScore(a);
+      case 'price-asc': {
+        const pa = parsePrice(a.price), pb = parsePrice(b.price);
+        if (pa === null && pb === null) return 0;
+        if (pa === null) return 1;
+        if (pb === null) return -1;
+        return pa - pb;
+      }
+      case 'price-desc': {
+        const pa = parsePrice(a.price), pb = parsePrice(b.price);
+        if (pa === null && pb === null) return 0;
+        if (pa === null) return 1;
+        if (pb === null) return -1;
+        return pb - pa;
+      }
+      case 'location': return (a.address || 'zzz').localeCompare(b.address || 'zzz');
+      case 'recent': return (b.created || 0) - (a.created || 0);
+      case 'alpha': return a.name.localeCompare(b.name);
+      default: return 0;
+    }
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty">Aucune activité ne correspond ✿<br><small>Essaie d'enlever quelques filtres</small></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(a => {
+    const descLong = (a.desc || '').length > 120;
+    const linkHtml = isUrl(a.link)
+      ? `<div class="card-meta-item">🔗 <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener">${escapeHtml(a.link.length > 40 ? a.link.substring(0, 40) + '…' : a.link)}</a></div>`
+      : '';
+    return `
+      <article class="card ${a.done ? 'done' : ''}" data-id="${a.id}">
+        <div class="card-header">
+          <div class="card-title">${escapeHtml(a.name)}</div>
+          ${a.price ? `<div class="card-price ${priceClass(a.price)}">${escapeHtml(a.price)}</div>` : ''}
+        </div>
+        <div class="notes">
+          ${noteBadge(a.monico, 'Monico')}
+          ${noteBadge(a.magiu, 'Magiú')}
+        </div>
+        ${a.done ? `
+          <div class="done-banner">
+            <strong>✓ Fait${a.doneBy ? ' par ' + (a.doneBy === 'monico' ? 'Monico' : 'Magiú') : ''}${a.doneDate ? ' le ' + formatDate(a.doneDate) : ''}</strong>
+            ${a.doneComment ? `<div class="done-comment">« ${escapeHtml(a.doneComment)} »</div>` : ''}
+          </div>
+        ` : ''}
+        ${a.desc ? `
+          <div class="card-desc${descLong ? ' collapsed' : ''}" id="desc-${a.id}">${escapeHtml(a.desc)}</div>
+          ${descLong ? `<button class="read-more" data-action="expand" data-id="${a.id}">Lire la suite</button>` : ''}
+        ` : ''}
+        ${(a.address || linkHtml) ? `
+          <div class="card-meta">
+            ${a.address ? `<div class="card-meta-item">📍 ${escapeHtml(a.address)}</div>` : ''}
+            ${linkHtml}
+          </div>
+        ` : ''}
+        <div class="card-actions">
+          ${a.done
+            ? `<button class="btn btn-sm" data-action="undo" data-id="${a.id}">↺ Remettre à faire</button>`
+            : `<button class="btn btn-success btn-sm" data-action="done" data-id="${a.id}">✓ On l'a fait !</button>`
+          }
+          <button class="btn btn-ghost btn-sm" data-action="edit" data-id="${a.id}">✎ Modifier</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderStats() {
+  const total = activities.length;
+  const done = activities.filter(a => a.done).length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const el = document.getElementById('stats');
+  if (el) el.innerHTML = `
+    <div class="stat"><strong>${total}</strong> idées</div>
+    <div class="stat"><strong>${done}</strong> faites</div>
+    <div class="stat"><strong>${pct}%</strong> ♡</div>
+  `;
+}
+
+function renderWho() {
+  document.querySelectorAll('.who-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.who === whoAmI);
+  });
+}
+
+async function renderMap() {
+  const mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  if (typeof L === 'undefined') {
+    setTimeout(renderMap, 200);
+    return;
+  }
+  if (!mapInstance) {
+    mapInstance = L.map('map').setView([48.8566, 2.3522], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
+    }).addTo(mapInstance);
+  }
+  mapMarkers.forEach(m => mapInstance.removeLayer(m));
+  mapMarkers = [];
+
+  let toShow = activities.filter(a => {
+    if (filters.mapFilter === 'todo' && a.done) return false;
+    if (filters.mapFilter === 'done' && !a.done) return false;
+    return true;
+  });
+
+  // Géocode les activités avec adresse mais sans coords
+  for (const a of toShow) {
+    if (!a.lat && a.address && !/^chez|^tbd|^à la maison/i.test(a.address.trim())) {
+      const coords = await geocode(a.address);
+      if (coords) {
+        a.lat = coords.lat;
+        a.lng = coords.lng;
+        try { await saveActivity(a); } catch (e) {}
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+  }
+
+  const withCoords = toShow.filter(a => a.lat && a.lng);
+  const bounds = [];
+
+  withCoords.forEach(a => {
+    const score = combinedScore(a);
+    const color = a.done ? '#8db596' : (score >= 7 ? '#d4a017' : score >= 4 ? '#7ab87a' : '#e07a8b');
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+    const m = L.marker([a.lat, a.lng], { icon }).addTo(mapInstance);
+    const popupHtml = `
+      <div class="map-popup">
+        <h4>${escapeHtml(a.name)}</h4>
+        <div class="pop-notes">
+          ${noteBadge(a.monico, 'Monico')}
+          ${noteBadge(a.magiu, 'Magiú')}
+        </div>
+        ${a.price ? `<div class="pop-meta">💰 ${escapeHtml(a.price)}</div>` : ''}
+        ${a.address ? `<div class="pop-meta">📍 ${escapeHtml(a.address)}</div>` : ''}
+        ${a.done ? '<div class="pop-meta">✓ Fait !</div>' : ''}
+      </div>
+    `;
+    m.bindPopup(popupHtml);
+    mapMarkers.push(m);
+    bounds.push([a.lat, a.lng]);
+  });
+
+  if (bounds.length > 0) {
+    mapInstance.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+  }
+  setTimeout(() => mapInstance.invalidateSize(), 100);
+}
+
+function renderTier() {
+  const container = document.getElementById('tierlist');
+  if (!container) return;
+  const view = filters.tierView;
+  const tiers = ['S', 'A', 'B', 'C', 'D', 'X'];
+
+  const getTier = (a) => {
+    if (view === 'monico') return a.monico || 'X';
+    if (view === 'magiu') return a.magiu || 'X';
+    const s = combinedScore(a);
+    if (s >= 9) return 'S';
+    if (s >= 7) return 'A';
+    if (s >= 5) return 'B';
+    if (s >= 3) return 'C';
+    if (s >= 1) return 'D';
+    return 'X';
+  };
+
+  const grouped = {};
+  tiers.forEach(t => grouped[t] = []);
+  activities.forEach(a => {
+    const t = getTier(a);
+    if (grouped[t]) grouped[t].push(a);
+  });
+
+  Object.values(grouped).forEach(arr => {
+    arr.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return combinedScore(b) - combinedScore(a);
+    });
+  });
+
+  const labels = { 'S': 'S', 'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'X': '—' };
+
+  container.innerHTML = tiers.map(t => {
+    const items = grouped[t];
+    return `
+      <div class="tier">
+        <div class="tier-label tier-${t}">${labels[t]}</div>
+        <div class="tier-items">
+          ${items.length === 0
+            ? '<div class="tier-empty">vide</div>'
+            : items.map(a => `<div class="tier-item ${a.done ? 'done' : ''}" data-action="tier-click" data-id="${a.id}">${escapeHtml(a.name)}</div>`).join('')
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAll() {
+  renderList();
+  renderStats();
+  if (document.getElementById('tab-map').style.display !== 'none') renderMap();
+  if (document.getElementById('tab-tier').style.display !== 'none') renderTier();
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type === 'error' ? ' error' : ' success');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function openDoneModal(id) {
+  currentDoneId = id;
+  const a = activities.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('modal-title').textContent = a.name + ' 🎉';
+  document.getElementById('done-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('done-comment').value = '';
+  document.getElementById('modal-done').classList.add('open');
+}
+
+async function confirmDone() {
+  const a = activities.find(x => x.id === currentDoneId);
+  if (!a) return;
+  a.done = true;
+  a.doneDate = document.getElementById('done-date').value || new Date().toISOString().split('T')[0];
+  a.doneComment = document.getElementById('done-comment').value.trim() || null;
+  a.doneBy = whoAmI || null;
+  await saveActivity(a);
+  document.getElementById('modal-done').classList.remove('open');
+  toast('✓ Activité validée — bravo vous deux !');
+}
+
+async function undoActivity(id) {
+  const a = activities.find(x => x.id === id);
+  if (!a) return;
+  a.done = false;
+  a.doneDate = null;
+  a.doneComment = null;
+  a.doneBy = null;
+  await saveActivity(a);
+  toast('↺ Remise dans les à faire');
+}
+
+function openEditModal(id) {
+  currentEditId = id;
+  const a = activities.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('e-name').value = a.name || '';
+  document.getElementById('e-monico').value = a.monico || '';
+  document.getElementById('e-magiu').value = a.magiu || '';
+  document.getElementById('e-desc').value = a.desc || '';
+  document.getElementById('e-price').value = a.price || '';
+  document.getElementById('e-address').value = a.address || '';
+  document.getElementById('e-link').value = a.link || '';
+  updateNotePicker('e-monico', a.monico);
+  updateNotePicker('e-magiu', a.magiu);
+  document.getElementById('modal-edit').classList.add('open');
+}
+
+async function confirmEdit() {
+  const a = activities.find(x => x.id === currentEditId);
+  if (!a) return;
+  const name = document.getElementById('e-name').value.trim();
+  if (!name) { toast('⚠ Le nom est requis', 'error'); return; }
+  const newAddress = document.getElementById('e-address').value.trim();
+  if (newAddress !== (a.address || '')) {
+    a.lat = null;
+    a.lng = null;
+  }
+  a.name = name;
+  a.monico = document.getElementById('e-monico').value;
+  a.magiu = document.getElementById('e-magiu').value;
+  a.desc = document.getElementById('e-desc').value.trim();
+  a.price = document.getElementById('e-price').value.trim();
+  a.address = newAddress;
+  a.link = document.getElementById('e-link').value.trim();
+  await saveActivity(a);
+  document.getElementById('modal-edit').classList.remove('open');
+  toast('✓ Modifié');
+}
+
+async function deleteActivity() {
+  if (!confirm('Vraiment supprimer cette activité ?')) return;
+  await removeActivity(currentEditId);
+  document.getElementById('modal-edit').classList.remove('open');
+  toast('🗑 Supprimé');
+}
+
+async function addActivity() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('⚠ Donne au moins un nom', 'error'); return; }
+  const newActivity = {
+    id: 'a_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    name,
+    monico: document.getElementById('f-monico').value || '',
+    magiu: document.getElementById('f-magiu').value || '',
+    desc: document.getElementById('f-desc').value.trim(),
+    price: document.getElementById('f-price').value.trim(),
+    address: document.getElementById('f-address').value.trim(),
+    link: document.getElementById('f-link').value.trim(),
+    done: false,
+    doneDate: null,
+    doneComment: null,
+    doneBy: null,
+    lat: null,
+    lng: null,
+    created: Date.now()
+  };
+  await saveActivity(newActivity);
+  ['f-name','f-desc','f-price','f-address','f-link'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-monico').value = '';
+  document.getElementById('f-magiu').value = '';
+  updateNotePicker('f-monico', '');
+  updateNotePicker('f-magiu', '');
+  toast('✨ Nouvelle aventure ajoutée !');
+  switchTab('list');
+}
+
+function updateNotePicker(hiddenId, value) {
+  const picker = document.querySelector(`.note-picker[data-target="${hiddenId}"]`);
+  if (!picker) return;
+  picker.querySelectorAll('.note-option').forEach(b => {
+    b.classList.remove('selected');
+    if (b.dataset.v === (value || '')) b.classList.add('selected');
+  });
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['list', 'map', 'tier', 'add'].forEach(n => {
+    document.getElementById('tab-' + n).style.display = n === name ? '' : 'none';
+  });
+  if (name === 'map') setTimeout(renderMap, 50);
+  if (name === 'tier') renderTier();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.addEventListener('click', e => {
+  const action = e.target.closest('[data-action]');
+  if (action) {
+    const id = action.dataset.id;
+    if (action.dataset.action === 'done') openDoneModal(id);
+    else if (action.dataset.action === 'undo') undoActivity(id);
+    else if (action.dataset.action === 'edit') openEditModal(id);
+    else if (action.dataset.action === 'tier-click') openEditModal(id);
+    else if (action.dataset.action === 'expand') {
+      const desc = document.getElementById('desc-' + id);
+      if (desc) desc.classList.remove('collapsed');
+      action.style.display = 'none';
+    }
+    return;
+  }
+  const tab = e.target.closest('.tab');
+  if (tab) { switchTab(tab.dataset.tab); return; }
+
+  const chip = e.target.closest('.chip[data-filter]');
+  if (chip) {
+    const f = chip.dataset.filter;
+    filters[f] = chip.dataset.value;
+    document.querySelectorAll(`.chip[data-filter="${f}"]`).forEach(c => c.classList.toggle('active', c === chip));
+    renderList();
+    return;
+  }
+
+  const mapChip = e.target.closest('.chip[data-mapfilter]');
+  if (mapChip) {
+    filters.mapFilter = mapChip.dataset.mapfilter;
+    document.querySelectorAll('.chip[data-mapfilter]').forEach(c => c.classList.toggle('active', c === mapChip));
+    renderMap();
+    return;
+  }
+
+  const tierBtn = e.target.closest('.tier-toggle');
+  if (tierBtn) {
+    filters.tierView = tierBtn.dataset.tierView;
+    document.querySelectorAll('.tier-toggle').forEach(b => b.classList.toggle('active', b === tierBtn));
+    renderTier();
+    return;
+  }
+
+  const noteBtn = e.target.closest('.note-option');
+  if (noteBtn) {
+    const picker = noteBtn.parentElement;
+    const targetId = picker.dataset.target;
+    const v = noteBtn.dataset.v;
+    document.getElementById(targetId).value = v;
+    updateNotePicker(targetId, v);
+    return;
+  }
+
+  const whoBtn = e.target.closest('.who-pill');
+  if (whoBtn) {
+    saveWho(whoBtn.dataset.who);
+    toast('Bonjour ' + (whoBtn.dataset.who === 'monico' ? 'Monico ♡' : 'Magiú ♡'));
+    return;
+  }
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  filters.search = e.target.value;
+  renderList();
+});
+document.getElementById('sort').addEventListener('change', e => {
+  filters.sort = e.target.value;
+  renderList();
+});
+document.getElementById('btn-submit').addEventListener('click', addActivity);
+document.getElementById('cancel-done').addEventListener('click', () => document.getElementById('modal-done').classList.remove('open'));
+document.getElementById('confirm-done').addEventListener('click', confirmDone);
+document.getElementById('cancel-edit').addEventListener('click', () => document.getElementById('modal-edit').classList.remove('open'));
+document.getElementById('confirm-edit').addEventListener('click', confirmEdit);
+document.getElementById('delete-activity').addEventListener('click', deleteActivity);
+
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+function init() {
+  loadWho();
+  loadActivities();
+}
+
+if (window.__USE_FIREBASE !== undefined) {
+  init();
+} else {
+  window.addEventListener('firebase-ready', init, { once: true });
+  setTimeout(() => { if (activities.length === 0 && window.__USE_FIREBASE === undefined) init(); }, 1500);
+}
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+</body>
+</html>
