@@ -225,6 +225,15 @@
   #map { height: 60vh; min-height: 400px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); z-index: 1; }
   .map-popup { font-family: 'Quicksand', sans-serif; }
   .map-popup h4 { font-size: 14px; margin-bottom: 4px; color: var(--text); }
+  .map-popup h4 a.popup-title-link {
+    color: var(--primary-dark);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--primary-dark);
+  }
+  .map-popup h4 a.popup-title-link:hover {
+    color: var(--primary);
+    border-bottom-style: solid;
+  }
   .map-popup .pop-notes { display: flex; gap: 4px; margin: 4px 0; flex-wrap: wrap; }
   .map-popup .pop-meta { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
   .map-info-banner {
@@ -325,10 +334,26 @@
   <section id="tab-map" style="display:none;">
     <div class="filters" style="margin-bottom: 12px;">
       <div class="filter-row">
-        <span class="filter-label">Afficher</span>
+        <span class="filter-label">Statut</span>
         <button class="chip active" data-mapfilter="all">Toutes</button>
         <button class="chip" data-mapfilter="todo">À faire</button>
         <button class="chip" data-mapfilter="done">✓ Faites</button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Monico</span>
+        <button class="chip active" data-mapmonico="all">Tous</button>
+        <button class="chip note-A" data-mapmonico="A">A</button>
+        <button class="chip note-B" data-mapmonico="B">B</button>
+        <button class="chip note-C" data-mapmonico="C">C</button>
+        <button class="chip note-D" data-mapmonico="D">D</button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">Magiú</span>
+        <button class="chip active" data-mapmagiu="all">Tous</button>
+        <button class="chip note-A" data-mapmagiu="A">A</button>
+        <button class="chip note-B" data-mapmagiu="B">B</button>
+        <button class="chip note-C" data-mapmagiu="C">C</button>
+        <button class="chip note-D" data-mapmagiu="D">D</button>
       </div>
     </div>
     <div class="map-info-banner" id="map-info">
@@ -466,6 +491,11 @@
     </div>
     <div class="field"><label>Lien</label><input type="url" id="e-link" /></div>
 
+    <!-- Bouton "On l'a fait !" visible uniquement si l'activité n'est pas encore faite -->
+    <div id="e-mark-done-section" style="display: none; padding-top: 12px; margin-top: 12px; border-top: 1px dashed var(--border-strong);">
+      <button class="btn btn-ghost btn-full" id="mark-done-from-edit">✓ On l'a fait !</button>
+    </div>
+
     <!-- Section "Si l'activité est faite" -->
     <div id="e-done-section" style="display: none; padding-top: 12px; margin-top: 12px; border-top: 1px dashed var(--border-strong);">
       <p style="font-size: 12px; color: var(--secondary-dark); font-weight: 600; margin-bottom: 12px;">
@@ -541,7 +571,7 @@ window.dispatchEvent(new Event('firebase-ready'));
 const LOCAL_KEY = 'mm_activities_v4';
 const WHO_KEY = 'mm_who';
 let activities = [];
-let filters = { status: 'all', monico: 'all', magiu: 'all', search: '', sort: 'best', mapFilter: 'all', tierView: 'combined', tierStatus: 'all' };
+let filters = { status: 'all', monico: 'all', magiu: 'all', search: '', sort: 'best', mapFilter: 'all', mapMonico: 'all', mapMagiu: 'all', tierView: 'combined', tierStatus: 'all' };
 let currentDoneId = null;
 let currentEditId = null;
 let whoAmI = null;
@@ -670,6 +700,37 @@ function formatDate(iso) {
 function isUrl(s) { return s && /^https?:\/\//i.test(s); }
 function noteValue(n) { return n === 'A' ? 4 : n === 'B' ? 3 : n === 'C' ? 2 : n === 'D' ? 1 : 0; }
 function combinedScore(a) { return noteValue(a.monico) + noteValue(a.magiu); }
+
+// Moyenne des notes existantes (ignore les "—")
+// Si filtre actif (filterMonico ou filterMagiu pas 'all'), on prend seulement la note concernée
+function averageNote(a, focusMonico, focusMagiu) {
+  const onlyMonico = focusMonico && focusMonico !== 'all';
+  const onlyMagiu = focusMagiu && focusMagiu !== 'all';
+  let values = [];
+  if (onlyMonico && !onlyMagiu) {
+    if (a.monico) values.push(noteValue(a.monico));
+  } else if (onlyMagiu && !onlyMonico) {
+    if (a.magiu) values.push(noteValue(a.magiu));
+  } else {
+    // Vue combinée : moyenne des notes existantes des deux
+    if (a.monico) values.push(noteValue(a.monico));
+    if (a.magiu) values.push(noteValue(a.magiu));
+  }
+  if (values.length === 0) return null;
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
+// Couleur du marqueur selon la note moyenne
+// Si activité faite → toujours vert clair (peu importe la note)
+function getMarkerColor(a, focusMonico, focusMagiu) {
+  if (a.done) return '#8db596';
+  const avg = averageNote(a, focusMonico, focusMagiu);
+  if (avg === null) return '#a8938d'; // gris
+  if (avg >= 3.5) return '#7ab87a';   // vert (A)
+  if (avg >= 2.5) return '#f4b860';   // orange (B)
+  if (avg >= 1.5) return '#e07a8b';   // rose (C)
+  return '#b39ddb';                    // violet (D)
+}
 
 // Helpers pour récupérer le commentaire de chaque personne
 // Rétro-compat : si commentMonico/commentMagiu n'existent pas mais doneComment oui,
@@ -846,6 +907,8 @@ async function renderMap() {
   let toShow = activities.filter(a => {
     if (filters.mapFilter === 'todo' && a.done) return false;
     if (filters.mapFilter === 'done' && !a.done) return false;
+    if (filters.mapMonico !== 'all' && a.monico !== filters.mapMonico) return false;
+    if (filters.mapMagiu !== 'all' && a.magiu !== filters.mapMagiu) return false;
     return true;
   });
 
@@ -871,9 +934,7 @@ async function renderMap() {
   const bounds = [];
 
   withCoords.forEach(a => {
-    const score = combinedScore(a);
-    // Couleurs : vert clair = fait, vert foncé = bien noté (6+), orange = moyen (3-5), gris foncé = pas/peu noté
-    const color = a.done ? '#8db596' : (score >= 6 ? '#7ab87a' : score >= 3 ? '#f4b860' : '#a8938d');
+    const color = getMarkerColor(a, filters.mapMonico, filters.mapMagiu);
     const icon = L.divIcon({
       className: 'custom-marker',
       html: `<div style="background:${color};width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
@@ -883,7 +944,7 @@ async function renderMap() {
     const m = L.marker([a.lat, a.lng], { icon }).addTo(mapInstance);
     const popupHtml = `
       <div class="map-popup">
-        <h4>${escapeHtml(a.name)}</h4>
+        <h4><a href="#" class="popup-title-link" data-edit-id="${a.id}">${escapeHtml(a.name)}</a></h4>
         <div class="pop-notes">
           ${noteBadgeHtml(a.monico, 'monico', 'Monico', a.id, false)}
           ${noteBadgeHtml(a.magiu, 'magiu', 'Magiú', a.id, false)}
@@ -1042,8 +1103,10 @@ function openEditModal(id) {
 
   // Section "fait" : visible uniquement si l'activité est faite
   const doneSection = document.getElementById('e-done-section');
+  const markDoneSection = document.getElementById('e-mark-done-section');
   if (a.done) {
     doneSection.style.display = '';
+    markDoneSection.style.display = 'none';
     // Infos sur quand/par qui
     const info = document.getElementById('e-done-info');
     let infoTxt = '';
@@ -1068,6 +1131,7 @@ function openEditModal(id) {
     }
   } else {
     doneSection.style.display = 'none';
+    markDoneSection.style.display = '';
   }
 
   document.getElementById('modal-edit').classList.add('open');
@@ -1240,6 +1304,19 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // 1bis) Clic sur titre de popup carte → ouvre la modale d'édition
+  const popupLink = e.target.closest('.popup-title-link');
+  if (popupLink) {
+    e.preventDefault();
+    const id = popupLink.dataset.editId;
+    if (id) {
+      // Ferme le popup Leaflet ouvert
+      if (mapInstance) mapInstance.closePopup();
+      openEditModal(id);
+    }
+    return;
+  }
+
   // 2) Identifier l'action sur la cible
   const action = e.target.closest('[data-action]');
 
@@ -1281,6 +1358,22 @@ document.addEventListener('click', e => {
   if (mapChip) {
     filters.mapFilter = mapChip.dataset.mapfilter;
     document.querySelectorAll('.chip[data-mapfilter]').forEach(c => c.classList.toggle('active', c === mapChip));
+    renderMap();
+    return;
+  }
+
+  const mapMonicoChip = e.target.closest('.chip[data-mapmonico]');
+  if (mapMonicoChip) {
+    filters.mapMonico = mapMonicoChip.dataset.mapmonico;
+    document.querySelectorAll('.chip[data-mapmonico]').forEach(c => c.classList.toggle('active', c === mapMonicoChip));
+    renderMap();
+    return;
+  }
+
+  const mapMagiuChip = e.target.closest('.chip[data-mapmagiu]');
+  if (mapMagiuChip) {
+    filters.mapMagiu = mapMagiuChip.dataset.mapmagiu;
+    document.querySelectorAll('.chip[data-mapmagiu]').forEach(c => c.classList.toggle('active', c === mapMagiuChip));
     renderMap();
     return;
   }
@@ -1338,6 +1431,12 @@ document.getElementById('undo-activity').addEventListener('click', async () => {
   if (!confirm('Remettre cette activité dans les "à faire" ? Les commentaires seront effacés.')) return;
   await undoActivity(currentEditId);
   document.getElementById('modal-edit').classList.remove('open');
+});
+document.getElementById('mark-done-from-edit').addEventListener('click', () => {
+  if (!currentEditId) return;
+  // Ferme la modal Modifier et ouvre la modal Validation
+  document.getElementById('modal-edit').classList.remove('open');
+  openDoneModal(currentEditId);
 });
 
 document.querySelectorAll('.modal-overlay').forEach(o => {
